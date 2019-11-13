@@ -1,3 +1,4 @@
 Data/Songs/*
 Data/MPD/*
+data/song_uid2name.json
 .ipynb_checkpoints
