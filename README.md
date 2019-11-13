@@ -3,7 +3,8 @@
 ## Data Decription 
 - song_counts.json: JSON with key=track UID, value=appearences in MPD playlists 
 - top_songs.npy: array of songs that appear in > 10 playlists (about 10% of 2,262,292 total)
-- song_uid2name.json.zip: compression JSON for lookup of song names. Key=UID, value=song name
+- song_uid2name.json.zip: compression JSON for lookup of song names. Key=UID, value=song name. (The full json, which is output by top_songs_extract.ipynb is too large to store in github, so it is put in the .gitignore file and the extracted version is uploaded instead). 
+
 *NOTE: in order to run the notebooks, the data directory should also include the MDP csv's in "data/Songs/" (downloaded from google drive). 
 
 ## Notebooks
