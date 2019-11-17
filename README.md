@@ -25,8 +25,18 @@ To keep track of the work we've done and make our eventual write-up easier.
 4. Run `song_distance_calculator.ipynb` to calculate "distance" between songs -- **???? <<Michael question for @Maggie>> is this just a 2M x 2M matrix where matrix[i][j] = # of times song i and song j appear in same playlist ???? (stored in ????)**
 
 
-## Model
+## Models
 
 ### WRMF
 
-- Use cosine similarity to assess similarity between tracks instead of simple dot product per (http://www.cs.toronto.edu/~mvolkovs/sigir2015_svd.pdf)
+Stored in `Models/wrmf.py`
+
+- Use Weighted Regularized Matrix Factorization to get most similar tracks based on their presence in playlists
+	- User x Item matrix ==> Playlist x Track matrix (where M[i][j] = 1 iff Playlist i contains Track j)
+- Currently uses dot product to assess similarity between tracks -- Future work: However, this paper advises to use cosine similarity instead of simple dot product (http://www.cs.toronto.edu/~mvolkovs/sigir2015_svd.pdf)
+
+### Nearest Neighbor
+
+Stored in `Models/nearest_neighbor.py`
+
+- Use K-NN with distance metric of cosine similarity on a Track x Playlist matrix (where M[i][j] = 1 iff Track i is in Playlist j) to get similar tracks
