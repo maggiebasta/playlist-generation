@@ -10,13 +10,26 @@ import pickle
 # Needed for Jupyter notebook Sublime integration
 PATH_TO_SCRIPT = '/Users/mwornow/Desktop/Dropbox/School/Stat121/Project/playlist-generation/Models/'
 sys.path.insert(0, PATH_TO_SCRIPT)
+PATH_TO_SCRIPT = '/Users/mwornow/Desktop/Dropbox/School/Stat121/Project/playlist-generation/'
+sys.path.insert(0, PATH_TO_SCRIPT)
 from implicit_mf import implicit_als_cg
+from gen_spotify_api_database import Track, fetchTracks
 
-
-PATH_TO_SPARSE_MATRIX = PATH_TO_SCRIPT + '../Data/mdp_wrmf_sparse_matrix.pickle'
+# Constants
+PATH_TO_SPARSE_MATRIX = PATH_TO_SCRIPT + 'Data/mdp_wrmf_sparse_matrix.pickle'
 PATH_TO_MDP_DATA_FOLDER = '/Users/mwornow/desktop/Stat121Data/'
 
 # User-item ==> Playlist-track
+
+def get_user_item_sparse_matrix(path_to_matrix):
+	if os.path.isfile(path_to_matrix):
+		with open(path_to_matrix, 'rb') as fd:
+			matrix, tid_to_idx, idx_to_tid, pid_to_idx, idx_to_pid = pickle.load(fd)
+	else:
+		matrix, tid_to_idx, idx_to_tid, pid_to_idx, idx_to_pid = read_all_csvs()
+		with open(path_to_matrix, 'wb') as fd:
+			pickle.dump((matrix, tid_to_idx, idx_to_tid, pid_to_idx, idx_to_pid), fd)
+	return matrix, tid_to_idx, idx_to_tid, pid_to_idx, idx_to_pid
 
 def read_all_csvs():
 	########
@@ -65,51 +78,43 @@ def read_all_csvs():
 	matrix = sparse.coo_matrix((V, (I, J)), dtype=np.float64)
 	matrix = matrix.tocsr()
 	return matrix, tid_to_idx, idx_to_tid, pid_to_idx, idx_to_pid
-if False: # os.path.isfile(PATH_TO_SPARSE_MATRIX):
-	with open(PATH_TO_SPARSE_MATRIX, 'rb') as fd:
-		matrix, tid_to_idx, idx_to_tid, pid_to_idx, idx_to_pid = pickle.load(fd.read())
-else:
-	matrix, tid_to_idx, idx_to_tid, pid_to_idx, idx_to_pid = read_all_csvs()
-	with open(PATH_TO_SPARSE_MATRIX, 'wb') as fd:
-		pickle.dump((matrix, tid_to_idx, idx_to_tid, pid_to_idx, idx_to_pid), fd)
 
-print("Sparse Matrix Dims:", matrix.shape, "| # of Entries in Sparse Matrix:", matrix.nnz)
+if __name__ == 'main':
+	matrix, tid_to_idx, idx_to_tid, pid_to_idx, idx_to_pid = get_user_item_sparse_matrix(PATH_TO_SPARSE_MATRIX)
+	print("Sparse Matrix Dims:", matrix.shape, "| # of Entries in Sparse Matrix:", matrix.nnz)
 
-alpha_val = 15
-conf_data = (matrix * alpha_val).astype('double')
-playlist_vecs, track_vecs = implicit_als_cg(conf_data, iterations=2, features=20)
+	alpha_val = 15
+	conf_data = (matrix * alpha_val).astype('double')
+	playlist_vecs, track_vecs = implicit_als_cg(conf_data, iterations=2, features=20)
 
-print("Fitted Feature Vectors:", playlist_vecs.shape, track_vecs.shape)
+	print("Fitted Feature Vectors:", playlist_vecs.shape, track_vecs.shape)
 
-# Find the 10 most similar to Jay-Z
-track_id = '1lzr43nnXAijIGYnCT8M8H' # It Wasn't Me, by Shaggy
-tid = tid_to_idx[track_id]
-track_vec = track_vecs[tid].T
-n_similar = 10
+	# Find the 10 most similar to Jay-Z
+	track_id = '1lzr43nnXAijIGYnCT8M8H' # It Wasn't Me, by Shaggy
+	tidx = tid_to_idx[track_id]
+	track_vec = track_vecs[tidx].T
+	n_similar = 10
 
-# Calculate the similarity score between Mr Carter and other artists
-# and select the top 10 most similar.
-scores = track_vecs.dot(track_vec).toarray().reshape(1,-1)[0]
-top_10 = np.argsort(scores)[::-1][:10]
+	# Calculate the similarity score between Mr Carter and other artists
+	# and select the top 10 most similar.
+	scores = track_vecs.dot(track_vec).toarray().reshape(1,-1)[0]
+	top_10 = np.argsort(scores)[::-1][:n_similar]
 
-artists = []
-artist_scores = []
-
-# Get and print the actual artists names and scores
-for idx in top_10:
-	print(idx_to_tid[idx])
+	# Get and print the actual artists names and scores
+	for idx in top_10:
+		print(idx_to_tid[idx])
 
 
-# Calculate the vector norms
-track_norms = sparse.linalg.norm(track_vecs, axis = 1, ord = 2)
+	# Calculate the vector norms
+	track_norms = sparse.linalg.norm(track_vecs, axis = 1, ord = 2) * sparse.linalg.norm(track_vec)
 
-# Calculate the similarity score, grab the top N items and
-# create a list of item-score tuples of most similar tracks
-track_vec = track_vecs[tid].T
-scores = track_vecs.dot(track_vec) / track_norms
-top_idx = np.argpartition(scores, -n_similar)[-n_similar:]
-similar = sorted(zip(top_idx, scores[top_idx] / track_norms[tid]), key=lambda x: -x[1])
+	# Calculate the similarity score, grab the top N items and
+	# create a list of item-score tuples of most similar tracks
+	track_vec = track_vecs[tidx].T
+	scores = track_vecs.dot(track_vec) / track_norms # Cosine similarity instead of dot products
+	top_idx = np.argpartition(scores, -n_similar)[-n_similar:]
+	similar = sorted(zip(top_idx, scores[top_idx]), key=lambda x: -x[1])
 
-# Print the names of our most similar tracks
-print(similar)
+	# Print the names of our most similar tracks
+	print(similar)
 

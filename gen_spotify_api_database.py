@@ -81,7 +81,7 @@ class Track():
 	def __str__(self):
 		return self.name + ', by '+', '.join([ str(a[1]) for a in self.artists]) + ' ('+self.album+')'
 
-def fetchTracks(sp, track_ids):
+def fetchTracks(sp, track_ids, verbose = True):
 	BATCH_SIZE = sp.lim_get_tracks # Fetch tracks 50 at a time (max allowed by Spotify API)
 	N_BATCHES = int(np.ceil(len(track_ids)/BATCH_SIZE))
 	start_time = time()
@@ -93,8 +93,9 @@ def fetchTracks(sp, track_ids):
 		data = sp.get_tracks(batch)
 		if data is None:
 			# Premature failure - Return so we can save results so far
-			print("> Failed on track "+str(batch_start_idx))
-			return False, tracks
+			if verbose:
+				print("> Failed on track "+str(batch_start_idx))
+			return tracks
 		for idx, track in enumerate(data['tracks']):
 			try:
 				obj = Track(track['id'], track['name'])
@@ -113,14 +114,14 @@ def fetchTracks(sp, track_ids):
 			except Exception as e:
 				# If it fails, it's because "track" is None, so no point to logging it
 				continue
-		if batch_idx % LOG_BATCH_INTERVAL == 0:
+		if verbose and batch_idx % LOG_BATCH_INTERVAL == 0:
 			elapsed_time = time() - start_time
 			start_time = time()
 			remaining_time = (N_BATCHES - batch_idx - 1)/LOG_BATCH_INTERVAL * elapsed_time
 			print("Fetched "+str(batch_end_idx) + "/" + str(len(track_ids))+ " tracks (" + "{0:.2f}s".format(elapsed_time) + " elapsed, " + "{0:.2f}s".format(remaining_time) + " left)")
-	return True, tracks
+	return tracks
 
-def fetchAudioFeatures(sp, tracks):
+def fetchAudioFeatures(sp, tracks, verbose = True):
 	BATCH_SIZE = sp.lim_get_audio_feats # Fetch tracks 100 at a time (max allowed by Spotify API)
 	N_BATCHES = int(np.ceil(len(tracks)/BATCH_SIZE))
 	start_time = time()
@@ -131,8 +132,8 @@ def fetchAudioFeatures(sp, tracks):
 		data = sp.get_audio_features([ t.id for t in batch ])
 		if data is None:
 			# Premature failure - Return so we can save results so far
-			print("> Failed on track "+str(batch_start_idx))
-			return False
+			if verbose:
+				print("> Failed on track "+str(batch_start_idx))
 		for idx, audio_feats in enumerate(data['audio_features']):
 			try:
 				track = tracks[batch_start_idx + idx]
@@ -153,12 +154,11 @@ def fetchAudioFeatures(sp, tracks):
 			except Exception as e:
 				print("  Failed fetchAudioFeatures() for: " + track.name + ", " + track.id)
 				continue
-		if batch_idx % LOG_BATCH_INTERVAL == 0:
+		if verbose and batch_idx % LOG_BATCH_INTERVAL == 0:
 			elapsed_time = time() - start_time
 			start_time = time()
 			remaining_time = (N_BATCHES - batch_idx - 1)/LOG_BATCH_INTERVAL * elapsed_time
 			print("Fetched "+str(batch_end_idx) + "/" + str(len(tracks))+ " audio features (" + "{0:.2f}s".format(elapsed_time) + " elapsed, " + "{0:.2f}s".format(remaining_time) + " left)")
-	return True
 
 def SpotifyAuth():
 	auth_string = CLIENT_ID + ':' + CLIENT_SECRET
@@ -174,50 +174,51 @@ def SpotifyAuth():
 ## ACTUAL PROGRAM ##
 ####################
 
-# Set up SpotiPy object
-sp = SpotifyAuth()
+if __name__ == 'main':
+	# Set up SpotiPy object
+	sp = SpotifyAuth()
 
-# Read in all tracks in MPD
-start_timer()
-with open(INPUT_ALL_TRACKS_JSON, 'r') as fd:
-	all_tracks = json.load(fd)
-all_track_ids = sorted([ x[len('spotify:track:'):] for x in all_tracks.keys()]) # So that keys are always read in same order
-print("**** Read "+INPUT_ALL_TRACKS_JSON + ' in ' + lap_timer())
+	# Read in all tracks in MPD
+	start_timer()
+	with open(INPUT_ALL_TRACKS_JSON, 'r') as fd:
+		all_tracks = json.load(fd)
+	all_track_ids = sorted([ x[len('spotify:track:'):] for x in all_tracks.keys()]) # So that keys are always read in same order
+	print("**** Read "+INPUT_ALL_TRACKS_JSON + ' in ' + lap_timer())
 
-# Read already saved Track() objs
-tracks = [] # All Track() objs in .pickle file
-complete_tracks = [] # Completed Track() with audio feats
-incomplete_tracks = [] # Track() with no audio feat
-complete_track_ids = []
-incomplete_track_ids = []
-with open(OUTPUT_ALL_TRACKS, 'rb') as fd:
-	try:
-		tracks = pickle.load(fd)
-		for t in tracks:
-			if t.audio_feats:
-				complete_tracks.append(t)
-				complete_track_ids.append(t.id)
-			else:
-				incomplete_tracks.append(t)
-				incomplete_track_ids.append(t.id)
-	except:
-		print("Empty .pickle file")
-print("**** Read "+OUTPUT_ALL_TRACKS + ' in ' + lap_timer())
-partial_track_ids = complete_track_ids + incomplete_track_ids # Have Track() obj already saved
-need_track_ids = list(set(all_track_ids) - set(partial_track_ids))
-print(need_track_ids)
-# Fetch Track() objs for all MPD tracks that we haven't already pickled
-print("# of ... Completed Tracks: "+str(len(complete_tracks)) + " | Tracks Missing Audio: "+str(len(incomplete_tracks)) + " | Unfetched Tracks: "+str(len(need_track_ids)))
-__, need_audio_feats_tracks = fetchTracks(sp, need_track_ids)
-print(need_audio_feats_tracks)
-print("**** Fetched tracks in " + lap_timer())
+	# Read already saved Track() objs
+	tracks = [] # All Track() objs in .pickle file
+	complete_tracks = [] # Completed Track() with audio feats
+	incomplete_tracks = [] # Track() with no audio feat
+	complete_track_ids = []
+	incomplete_track_ids = []
+	with open(OUTPUT_ALL_TRACKS, 'rb') as fd:
+		try:
+			tracks = pickle.load(fd)
+			for t in tracks:
+				if t.audio_feats:
+					complete_tracks.append(t)
+					complete_track_ids.append(t.id)
+				else:
+					incomplete_tracks.append(t)
+					incomplete_track_ids.append(t.id)
+		except:
+			print("Empty .pickle file")
+	print("**** Read "+OUTPUT_ALL_TRACKS + ' in ' + lap_timer())
+	partial_track_ids = complete_track_ids + incomplete_track_ids # Have Track() obj already saved
+	need_track_ids = list(set(all_track_ids) - set(partial_track_ids))
+	print(need_track_ids)
+	# Fetch Track() objs for all MPD tracks that we haven't already pickled
+	print("# of ... Completed Tracks: "+str(len(complete_tracks)) + " | Tracks Missing Audio: "+str(len(incomplete_tracks)) + " | Unfetched Tracks: "+str(len(need_track_ids)))
+	need_audio_feats_tracks = fetchTracks(sp, need_track_ids)
+	print(need_audio_feats_tracks)
+	print("**** Fetched tracks in " + lap_timer())
 
-# Fetch audio feats for all Track() objs
-__ = fetchAudioFeatures(sp, need_audio_feats_tracks + incomplete_tracks)
-print("**** Fetched audio features in " + lap_timer())
-tracks += need_audio_feats_tracks
+	# Fetch audio feats for all Track() objs
+	fetchAudioFeatures(sp, need_audio_feats_tracks + incomplete_tracks)
+	print("**** Fetched audio features in " + lap_timer())
+	tracks += need_audio_feats_tracks
 
-# Write objects to file
-with open(OUTPUT_ALL_TRACKS, 'wb') as fd:
-	pickle.dump(tracks, fd)
-print("**** Wrote .pickle file in " + lap_timer())
+	# Write objects to file
+	with open(OUTPUT_ALL_TRACKS, 'wb') as fd:
+		pickle.dump(tracks, fd)
+	print("**** Wrote .pickle file in " + lap_timer())
