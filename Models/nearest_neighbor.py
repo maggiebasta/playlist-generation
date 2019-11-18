@@ -5,7 +5,9 @@ import sys
 import os
 
 from wrmf import get_user_item_sparse_matrix
-from gen_spotify_api_database import Track, fetchTracks, Spotify, SpotifyAuth
+
+sys.path.append('../')
+from gen_spotify_api_database import fetchTracks, SpotifyAuth
 
 # Constants
 PATH_TO_SPARSE_MATRIX = '../Data/mdp_wrmf_sparse_matrix.pickle'

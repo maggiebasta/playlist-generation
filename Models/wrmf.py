@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import seaborn as sns
+# import seaborn as sns
 import scipy.sparse as sparse
 from sklearn.metrics import mean_squared_error
 import os
@@ -13,6 +13,8 @@ sys.path.insert(0, PATH_TO_SCRIPT)
 PATH_TO_SCRIPT = '/Users/mwornow/Desktop/Dropbox/School/Stat121/Project/playlist-generation/'
 sys.path.insert(0, PATH_TO_SCRIPT)
 from implicit_mf import implicit_als_cg
+
+sys.path.append('../')
 from gen_spotify_api_database import Track, fetchTracks
 
 # Constants
