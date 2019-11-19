@@ -39,6 +39,27 @@ Stored in `Models/wrmf.py`
 ### WRMF_v2
 - same as WRMF but uses implicit library 
 - also includes a general get_top_tracks() function
+
+```
+>>> track_id = '1lzr43nnXAijIGYnCT8M8H'
+>>> wrmf_v2.get_top_tracks(track_id, 10)
+
+Recommended Songs for It Wasn't Me
+------------------------------------------------------------
+Track Name                                        Score
+------------------------------------------------------------
+It Wasn't Me                                      1.000000
+Go Go                                             0.987669
+Barefoot Blue Jean Night                          0.983008
+i was all over her                                0.967889
+Fix                                               0.952666
+Too Good At Goodbyes                              0.951791
+More Than a Feeling - Single Version              0.950293
+Y.G.M.F.U.                                        0.949319
+Text Ur Number (feat. DJ Sliink & Fetty Wap)      0.947302
+Down                                              0.945389
+```
+
 ### Nearest Neighbor
 
 Stored in `Models/nearest_neighbor.py`
