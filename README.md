@@ -36,6 +36,9 @@ Stored in `Models/wrmf.py`
 	- User x Item matrix ==> Playlist x Track matrix (where M[i][j] = 1 iff Playlist i contains Track j)
 - Currently uses dot product to assess similarity between tracks -- Future work: However, this paper advises to use cosine similarity instead of simple dot product (http://www.cs.toronto.edu/~mvolkovs/sigir2015_svd.pdf)
 
+### WRMF_v2
+- same as WRMF but uses implicit library 
+- also includes a general get_top_tracks() function
 ### Nearest Neighbor
 
 Stored in `Models/nearest_neighbor.py`
