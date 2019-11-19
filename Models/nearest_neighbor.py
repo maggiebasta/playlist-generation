@@ -4,7 +4,7 @@ from sklearn.neighbors import NearestNeighbors
 import sys
 import os
 
-from wrmf import get_user_item_sparse_matrix
+from wrmf_v2 import get_user_item_sparse_matrix
 
 sys.path.append('../')
 from gen_spotify_api_database import fetchTracks, SpotifyAuth
