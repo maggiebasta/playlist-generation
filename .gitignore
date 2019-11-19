@@ -5,5 +5,5 @@ data/song_uid2name.json
 .DS_Store
 data/spotify_api_database.pickle
 .DS_Store
-.pyc
+*.pyc
 .vscode
