@@ -23,7 +23,6 @@ To keep track of the work we've done and make our eventual write-up easier.
 1. Run `Notebooks/initial_EDA.ipynb` for data exploration of MPD
 2. Run `Notebooks/top_songs_extract.ipynb` to get a dictionary of counts for each track ID (stored in `Data/song_counts.json`)
 3. Run `gen_spotify_api_database.py` to fetch audio features and additional track information for each track via the Spotify API. Results stored as **Track()** objects in `spotify_api_database.pickle` on the Google Drive
-4. Run `Notebooks/song_distance_calculator.ipynb` to calculate "distance" between songs -- **???? <<Michael question for @Maggie>> is this just a 2M x 2M matrix where matrix[i][j] = # of times song i and song j appear in same playlist ???? (stored in ????)**
 
 
 ## Models
