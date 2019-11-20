@@ -1,3 +1,4 @@
+import implicit
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -6,18 +7,17 @@ from sklearn.metrics import mean_squared_error
 import os
 import sys
 import pickle
+import itertools
 
 # Needed for Jupyter notebook Sublime integration
-PATH_TO_SCRIPT = '/Users/mwornow/Desktop/Dropbox/School/Stat121/Project/playlist-generation/Models/'
-sys.path.insert(0, PATH_TO_SCRIPT)
 PATH_TO_SCRIPT = '/Users/mwornow/Desktop/Dropbox/School/Stat121/Project/playlist-generation/'
 sys.path.insert(0, PATH_TO_SCRIPT)
-from implicit_mf import implicit_als_cg
 from gen_spotify_api_database import Track, fetchTracks
 
 # Constants
 PATH_TO_SPARSE_MATRIX = PATH_TO_SCRIPT + 'Data/mdp_wrmf_sparse_matrix.pickle'
 PATH_TO_MDP_DATA_FOLDER = '/Users/mwornow/desktop/Stat121Data/'
+PATH_TO_WRMF_GRID_SEARCH_RESULTS = PATH_TO_SCRIPT + 'Data/mdp_wrmf_grid_search_results.pickle'
 
 # User-item ==> Playlist-track
 
@@ -43,9 +43,9 @@ def read_all_csvs():
 		df['pid'] = df['pid'] + i * 1000
 		dfs.append(df)
 		print("Done reading "+filename)
-		if i > 4:
+		if i > 1:
 			break
-	df = pd.concat(dfs)
+	df = pd.concat(dfs).drop_duplicates() # Binarize dataset (some tracks appear >1 times per playlist)
 	#####
 	# (2) Convert Track URIs -> Track IDs, drop Track URI
 	####
@@ -62,59 +62,119 @@ def read_all_csvs():
 	tid_to_idx = {}
 	idx_to_tid = {}
 	for (idx, tid) in enumerate(df['tid'].unique().tolist()):
-	    tid_to_idx[tid] = idx
-	    idx_to_tid[idx] = tid
+		tid_to_idx[tid] = idx
+		idx_to_tid[idx] = tid
 	pid_to_idx = {}
 	idx_to_pid = {}
 	for (idx, pid) in enumerate(df['pid'].unique().tolist()):
-	    pid_to_idx[pid] = idx
-	    idx_to_pid[idx] = pid
+		pid_to_idx[pid] = idx
+		idx_to_pid[idx] = pid
 	# Convert DataFrame -> Sparse Matrix
 	def map_ids(row, mapper):
 		return mapper[row]
 	I = df['pid'].apply(map_ids, args=[pid_to_idx]).to_numpy()
 	J = df['tid'].apply(map_ids, args=[tid_to_idx]).to_numpy()
 	V = np.ones(I.shape[0])
-	matrix = sparse.coo_matrix((V, (I, J)), dtype=np.float64)
-	matrix = matrix.tocsr()
-	return matrix, tid_to_idx, idx_to_tid, pid_to_idx, idx_to_pid
+	p_by_t_matrix = sparse.coo_matrix((V, (I, J)), dtype=np.float64)
+	p_by_t_matrix = p_by_t_matrix.tocsr()
+	return p_by_t_matrix, tid_to_idx, idx_to_tid, pid_to_idx, idx_to_pid
 
-if __name__ == 'main':
-	matrix, tid_to_idx, idx_to_tid, pid_to_idx, idx_to_pid = get_user_item_sparse_matrix(PATH_TO_SPARSE_MATRIX)
-	print("Sparse Matrix Dims:", matrix.shape, "| # of Entries in Sparse Matrix:", matrix.nnz)
+	def train_test_split(user_item_matrix, split_count = 5, fraction = 1):
+		"""
+		Split recommendation data into train and test sets
+		
+		Params
+		------
+		ratings : scipy.sparse matrix
+			Interactions between users and items.
+		split_count : int
+			Number of user-item-interactions per user to move
+			from training to test set.
+		fractions : float
+			Fraction of users to split off some of their
+			interactions into test set. If None, then all 
+			users are considered.
+		"""
+		if not (fraction >= 0 and fraction <= 1):
+			fraction = 1
+		# Note: likely not the fastest way to do things below.
+		train = user_item_matrix.copy().tocoo()
+		test = sparse.lil_matrix(train.shape)
+		
+		# (1) Get all rows with > split_count tracks marked as 1
+		splittable_rows, _, _ = sparse.find(train.sum(axis = 1) > (split_count * 2))
+		test_row_indices = np.random.choice(splittable_rows, size = fraction * splittable_rows.shape[0], replace = False)
 
-	alpha_val = 15
-	conf_data = (matrix * alpha_val).astype('double')
-	playlist_vecs, track_vecs = implicit_als_cg(conf_data, iterations=2, features=20)
+		train = train.tolil()
+		for test_row_idx in test_row_indices:
+			try:
+				test_cols = np.random.choice(user_item_matrix.getrow(test_row_idx).indices, 
+												size = split_count, 
+												replace=False)
+				train[test_row_idx, test_cols] = 0
+				test[test_row_idx, test_cols] = user_item_matrix[test_row_idx, test_cols]
+			except Exception as e:
+				print(str(e))
+		
+		# Test and training are truly disjoint
+		assert(train.multiply(test).nnz == 0)
+		return train.tocsr(), test.tocsr(), test_row_indices
 
-	print("Fitted Feature Vectors:", playlist_vecs.shape, track_vecs.shape)
+if __name__ == '__main__':
 
-	# Find the 10 most similar to Jay-Z
-	track_id = '1lzr43nnXAijIGYnCT8M8H' # It Wasn't Me, by Shaggy
-	tidx = tid_to_idx[track_id]
-	track_vec = track_vecs[tidx].T
-	n_similar = 10
+	# Save Grid Search results
+	with open(PATH_TO_WRMF_GRID_SEARCH_RESULTS, 'rb') as fd:
+		obj = pickle.loads(fd.read())
 
-	# Calculate the similarity score between Mr Carter and other artists
-	# and select the top 10 most similar.
-	scores = track_vecs.dot(track_vec).toarray().reshape(1,-1)[0]
-	top_10 = np.argsort(scores)[::-1][:n_similar]
+	print(obj)
+	exit()
+	np.random.seed(10)
+	# Read entire Playlist x Track matrix
+	p_by_t_matrix, tid_to_idx, idx_to_tid, pid_to_idx, idx_to_pid = get_user_item_sparse_matrix(PATH_TO_SPARSE_MATRIX)
+	print("Sparse Matrix Dims:", p_by_t_matrix.shape, "| # of Entries in Sparse Matrix:", p_by_t_matrix.nnz)
 
-	# Get and print the actual artists names and scores
-	for idx in top_10:
-		print(idx_to_tid[idx])
+	# Transpose matrix into Track x Playlist (item_user) matrix as implicit expects
+	t_by_p_matrix = p_by_t_matrix.transpose()
 
+	train, test, test_row_indices = train_test_split(p_by_t_matrix, split_count = 5, fraction = 1)
 
-	# Calculate the vector norms
-	track_norms = sparse.linalg.norm(track_vecs, axis = 1, ord = 2) * sparse.linalg.norm(track_vec)
+	hyperparams = {
+		'factors' : [10, 20, 30, 40, 50],
+		'regularization' : [10, 1, 0, 0.1, 0.01, 0.001],
+		'alpha' : [ 15 ],
+	}
 
-	# Calculate the similarity score, grab the top N items and
-	# create a list of item-score tuples of most similar tracks
-	track_vec = track_vecs[tidx].T
-	scores = track_vecs.dot(track_vec) / track_norms # Cosine similarity instead of dot products
-	top_idx = np.argpartition(scores, -n_similar)[-n_similar:]
-	similar = sorted(zip(top_idx, scores[top_idx]), key=lambda x: -x[1])
-
-	# Print the names of our most similar tracks
-	print(similar)
-
+	N_ITERATIONS = 30
+	results = []
+	for v in itertools.product(*hyperparams.values()):
+		params = dict(zip(hyperparams.keys(), v))
+		train_conf = (train * params['alpha']).astype('double').transpose() # ALS() expects item_user matrix, not user_item, so need to transpose
+		model_wrmf = implicit.approximate_als.NMSLibAlternatingLeastSquares(factors = params['factors'],
+																			regularization = params['regularization'],
+																			calculate_training_loss = True)
+		train_errors = []
+		test_errors = []
+		for iteration in range(1, N_ITERATIONS + 1):
+			model_wrmf.iterations = iteration
+			model_wrmf.fit(train_conf)
+			preds = model_wrmf.user_factors.dot(model_wrmf.item_factors.T) # This returns a Numpy array
+			top_k_preds = np.argsort(preds[test_row_indices,:], axis = 1)[:,:500]
+			r_test_precision = 0.0
+			r_train_precision = 0.0
+			for pred_idx in range(top_k_preds.shape[0]):
+				test_true_indices = test.getrow(test_row_indices[pred_idx]).indices
+				r_test_precision += len(set(top_k_preds[pred_idx,:test_true_indices.shape[0]]) & set(test_true_indices))/test_true_indices.shape[0] # Implement Spotify RecSys's R-precision score
+				train_true_indices = train.getrow(test_row_indices[pred_idx]).indices
+				r_train_precision += len(set(top_k_preds[pred_idx,:train_true_indices.shape[0]]) & set(train_true_indices))/train_true_indices.shape[0] # Implement Spotify RecSys's R-precision score
+			r_test_precision /= top_k_preds.shape[0] # Convert sum of R-preds to mean
+			r_train_precision /= top_k_preds.shape[0] # Convert sum of R-preds to mean
+			test_errors.append(r_test_precision)
+			train_errors.append(r_train_precision)
+			print("R-Precision @ iteration "+str(iteration)+": " + str(r_test_precision))
+		results.append({ 	'params' : params,
+							'train_mse' : train_errors,
+							'test_mse' : test_errors,
+						})
+	# Save Grid Search results
+	with open(PATH_TO_WRMF_GRID_SEARCH_RESULTS, 'wb') as fd:
+		pickle.dump(results, fd)
