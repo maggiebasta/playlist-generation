@@ -23,7 +23,6 @@ To keep track of the work we've done and make our eventual write-up easier.
 1. Run `Notebooks/initial_EDA.ipynb` for data exploration of MPD
 2. Run `Notebooks/top_songs_extract.ipynb` to get a dictionary of counts for each track ID (stored in `Data/song_counts.json`)
 3. Run `gen_spotify_api_database.py` to fetch audio features and additional track information for each track via the Spotify API. Results stored as **Track()** objects in `spotify_api_database.pickle` on the Google Drive
-4. Run `Notebooks/song_distance_calculator.ipynb` to calculate "distance" between songs -- **???? <<Michael question for @Maggie>> is this just a 2M x 2M matrix where matrix[i][j] = # of times song i and song j appear in same playlist ???? (stored in ????)**
 
 
 ## Models
@@ -35,6 +34,30 @@ Stored in `Models/wrmf.py`
 - Use Weighted Regularized Matrix Factorization to get most similar tracks based on their presence in playlists
 	- User x Item matrix ==> Playlist x Track matrix (where M[i][j] = 1 iff Playlist i contains Track j)
 - Currently uses dot product to assess similarity between tracks -- Future work: However, this paper advises to use cosine similarity instead of simple dot product (http://www.cs.toronto.edu/~mvolkovs/sigir2015_svd.pdf)
+
+### WRMF_v2
+- same as WRMF but uses implicit library 
+- also includes a general get_top_tracks() function
+
+```
+>>> track_id = '1lzr43nnXAijIGYnCT8M8H'
+>>> wrmf_v2.get_top_tracks(track_id, 10)
+
+Recommended Songs for It Wasn't Me
+------------------------------------------------------------
+Track Name                                        Score
+------------------------------------------------------------
+It Wasn't Me                                      1.000000
+Go Go                                             0.987669
+Barefoot Blue Jean Night                          0.983008
+i was all over her                                0.967889
+Fix                                               0.952666
+Too Good At Goodbyes                              0.951791
+More Than a Feeling - Single Version              0.950293
+Y.G.M.F.U.                                        0.949319
+Text Ur Number (feat. DJ Sliink & Fetty Wap)      0.947302
+Down                                              0.945389
+```
 
 ### Nearest Neighbor
 

@@ -4,3 +4,6 @@ data/song_uid2name.json
 .ipynb_checkpoints
 .DS_Store
 data/spotify_api_database.pickle
+.DS_Store
+*.pyc
+.vscode
