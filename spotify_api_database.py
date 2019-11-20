@@ -81,8 +81,13 @@ class Track():
 	def get_artists(self):
 		return ', '.join([ str(a[1]) for a in self.artists])
 
+	def get_audio_feats(self):
+		if self.audio_feats:
+			return "Danceability: " + str(self.danceability) + " | Energy: " + str(self.energy)
+		return ""
+	
 	def __str__(self):
-		return self.name + ', by ' + self.get_artists() + ' ('+self.album+')'
+		return self.name + ', by ' + self.get_artists()
 
 def fetchTracks(sp, track_ids, verbose = True):
 	BATCH_SIZE = sp.lim_get_tracks # Fetch tracks 50 at a time (max allowed by Spotify API)
