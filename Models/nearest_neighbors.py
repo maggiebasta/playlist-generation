@@ -1,11 +1,14 @@
+import implicit
 import numpy as np
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 import sys
 import os
 
-from wrmf import get_user_item_sparse_matrix
-from gen_spotify_api_database import Track, fetchTracks, Spotify, SpotifyAuth
+PATH_TO_SCRIPT = '/Users/mwornow/Desktop/Dropbox/School/Stat121/Project/playlist-generation/'
+sys.path.insert(0, PATH_TO_SCRIPT)
+from Models.wrmf import get_user_item_sparse_matrix
+from spotify_api_database import Track, fetchTracks, Spotify, SpotifyAuth
 
 # Constants
 PATH_TO_SPARSE_MATRIX = '../Data/mdp_wrmf_sparse_matrix.pickle'

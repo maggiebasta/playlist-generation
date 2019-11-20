@@ -12,7 +12,7 @@ import itertools
 # Needed for Jupyter notebook Sublime integration
 PATH_TO_SCRIPT = '/Users/mwornow/Desktop/Dropbox/School/Stat121/Project/playlist-generation/'
 sys.path.insert(0, PATH_TO_SCRIPT)
-from gen_spotify_api_database import Track, fetchTracks
+from spotify_api_database import Track, fetchTracks
 
 # Constants
 PATH_TO_SPARSE_MATRIX = PATH_TO_SCRIPT + 'Data/mdp_wrmf_sparse_matrix.pickle'
