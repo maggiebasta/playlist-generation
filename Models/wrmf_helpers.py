@@ -147,7 +147,7 @@ def get_top_similar_from_playlists(
     """
 
     # get conversions between index and spotify track id
-    _, tid_to_idx, idx_to_tid, _, _ = get_user_item_sparse_matrix(
+    matrix, tid_to_idx, idx_to_tid, _, _ = get_user_item_sparse_matrix(
         PATH_TO_SPARSE_MATRIX
     )
     tidxs = [tid_to_idx[tid] for tid in track_ids]
@@ -162,12 +162,56 @@ def get_top_similar_from_playlists(
         zip(top_idx, scores[top_idx]),
         key=lambda x: -x[1]
     ))
-    matrix, tid_to_idx, idx_to_tid, _, _ = get_user_item_sparse_matrix(
-        PATH_TO_SPARSE_MATRIX
-    )
+
     top_songs_idxs = np.argsort(
         np.sum(matrix[np.array(similar_playlists)], axis=0)
     )
+    top_songs_idxs = np.array(top_songs_idxs).flatten()[-n_similar_songs:]
+    return [idx_to_tid[idx] for idx in top_songs_idxs]
+
+
+def get_top_similar_from_ensemble(
+    song_factors,
+    playlist_factors,
+    track_ids,
+    n_similar_playlists,
+    n_similar_songs,
+    verbose=True
+):
+    """
+    Given seed tracks and a number of playlists to return, returns the
+    n most similar playlists computed by wrmf
+    :param song_factors: song_factors from wrmf
+    :param playlist_factors: playlist_factors from wrmf
+    :param track_ids: the ids of the seed tracks
+    :param n_similar: number of similar tracks to return
+    :param verbose: whether or not to print results
+    :returns: list of n_similar tuples of track_ids and scores
+    :verbose: boolean, whether or not to print results
+    """
+
+    # get conversions between index and spotify track id
+    matrix, tid_to_idx, idx_to_tid, _, _ = get_user_item_sparse_matrix(
+        PATH_TO_SPARSE_MATRIX
+    )
+    tidxs = [tid_to_idx[tid] for tid in track_ids]
+
+    item_vecs = song_factors
+
+    song_song_scores = np.sum(item_vecs.dot(item_vecs[tidxs].T), axis=1)
+
+    playlist_scores = np.sum(item_vecs[tidxs].dot(playlist_factors.T), axis=0)
+    top_idx = np.argpartition(
+        playlist_scores, -n_similar_playlists
+    )[-n_similar_playlists:]
+    similar_playlists, _ = zip(*sorted(
+        zip(top_idx, playlist_scores[top_idx]),
+        key=lambda x: -x[1]
+    ))
+    playlist_song_scores = np.sum(matrix[np.array(similar_playlists)], axis=0)
+
+    scores = playlist_song_scores + song_song_scores
+    top_songs_idxs = np.argsort(scores)
     top_songs_idxs = np.array(top_songs_idxs).flatten()[-n_similar_songs:]
     return [idx_to_tid[idx] for idx in top_songs_idxs]
 
