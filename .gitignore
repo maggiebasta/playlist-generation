@@ -7,3 +7,4 @@ data/spotify_api_database.pickle
 .DS_Store
 *.pyc
 .vscode
+data/mdp_wrmf_sparse_matrix.pickle
