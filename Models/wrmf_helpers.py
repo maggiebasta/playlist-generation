@@ -75,7 +75,7 @@ def get_fitted_wrmf(matrix_path, params):
     return model.item_factors, model.user_factors
 
 
-def get_top_tracks(song_factors, track_id, n_similar, verbose=True):
+def get_top_tracks(song_factors, track_ids, n_similar, verbose=True):
     """
     Given a track id and a number of tracks to return, returns the
     n most similar tracks computer by implicit_mf.implicit_als_cg()
@@ -89,22 +89,24 @@ def get_top_tracks(song_factors, track_id, n_similar, verbose=True):
     _, tid_to_idx, idx_to_tid, _, _ = get_user_item_sparse_matrix(
         PATH_TO_SPARSE_MATRIX
     )
-    tidx = tid_to_idx[track_id]
+    tidxs = [tid_to_idx[tid] for tid in track_ids]
 
     item_vecs = song_factors
     item_norms = np.sqrt((item_vecs * item_vecs).sum(axis=1))
 
-    scores = item_vecs.dot(item_vecs[tidx]) / item_norms
+    scores = np.sum(item_vecs.dot(item_vecs[tidxs].T), axis=1) / item_norms
     top_idx = np.argpartition(scores, -n_similar)[-n_similar:]
+    norm = sum([item_norms[tidx] for tidx in tidxs])
     similar = sorted(
-        zip(top_idx, scores[top_idx] / item_norms[tidx]),
+        zip(top_idx, scores[top_idx]/norm),
         key=lambda x: -x[1]
     )
 
     # Build return and print the names and scores of most similar
     ret = [idx_to_tid[idx] for idx, _ in similar]
     if verbose:
-        print(f"\nRecommended Songs for {get_song_name(track_id)}")
+        seed_names = [get_song_name(tid) for tid in track_ids]
+        print(f"\nRecommended Songs for {seed_names}")
         print('-' * 60)
         print('{:<50s}{:>4s}'.format("Track Name", "Score"))
         print('-' * 60)
