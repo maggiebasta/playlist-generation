@@ -75,12 +75,18 @@ def get_fitted_wrmf(matrix_path, params):
     return model.item_factors, model.user_factors
 
 
-def get_top_tracks(song_factors, track_ids, n_similar, verbose=True):
+def get_top_similar_from_tracks(
+    song_factors,
+    track_ids,
+    n_similar,
+    verbose=True):
     """
-    Given a track id and a number of tracks to return, returns the
-    n most similar tracks computer by implicit_mf.implicit_als_cg()
-    :param top_k_matrix: matrix of top songs for each song (stage 1 output)
-    :param n_similar: the number of recommendations to return
+    Given seed tracks and a number of tracks to return, returns the
+    n most similar tracks computed from wrmf
+    :param song_factors: song_factors from wrmf
+    :param track_ids: the ids of the seed tracks
+    :param n_similar: number of similar tracks to return
+    :param verbose: whether or not to print results
     :returns: list of n_similar tuples of track_ids and scores
     :verbose: boolean, whether or not to print results
     """
@@ -120,6 +126,52 @@ def get_top_tracks(song_factors, track_ids, n_similar, verbose=True):
     return ret
 
 
+def get_top_similar_from_playlists(
+    song_factors,
+    playlist_factors,
+    track_ids,
+    n_similar_playlists,
+    n_similar_songs,
+    verbose=True
+):
+    """
+    Given seed tracks and a number of playlists to return, returns the
+    n most similar playlists computed by wrmf
+    :param song_factors: song_factors from wrmf
+    :param playlist_factors: playlist_factors from wrmf
+    :param track_ids: the ids of the seed tracks
+    :param n_similar: number of similar tracks to return
+    :param verbose: whether or not to print results
+    :returns: list of n_similar tuples of track_ids and scores
+    :verbose: boolean, whether or not to print results
+    """
+
+    # get conversions between index and spotify track id
+    _, tid_to_idx, idx_to_tid, _, _ = get_user_item_sparse_matrix(
+        PATH_TO_SPARSE_MATRIX
+    )
+    tidxs = [tid_to_idx[tid] for tid in track_ids]
+
+    item_vecs = song_factors
+
+    scores = np.sum(item_vecs[tidxs].dot(playlist_factors.T), axis=0)
+    top_idx = np.argpartition(
+        scores, -n_similar_playlists
+    )[-n_similar_playlists:]
+    similar_playlists, _ = zip(*sorted(
+        zip(top_idx, scores[top_idx]),
+        key=lambda x: -x[1]
+    ))
+    matrix, tid_to_idx, idx_to_tid, _, _ = get_user_item_sparse_matrix(
+        PATH_TO_SPARSE_MATRIX
+    )
+    top_songs_idxs = np.argsort(
+        np.sum(matrix[np.array(similar_playlists)], axis=0)
+    )
+    top_songs_idxs = np.array(top_songs_idxs).flatten()[-n_similar_songs:]
+    return [idx_to_tid[idx] for idx in top_songs_idxs]
+
+
 if __name__ == "__main__":
     params = {
         'factors': 20,
@@ -128,6 +180,3 @@ if __name__ == "__main__":
         'alpha': 15
     }
     get_fitted_wrmf(PATH_TO_SPARSE_MATRIX, params)
-    # track_id = '1lzr43nnXAijIGYnCT8M8H'  # It Wasn't Me, by Shaggy
-    # n_similar = 10
-    # get_top_tracks(track_id, n_similar)
