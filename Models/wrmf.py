@@ -10,13 +10,13 @@ import pickle
 import itertools
 
 # Needed for Jupyter notebook Sublime integration
-PATH_TO_SCRIPT = '/Users/mwornow/Desktop/Dropbox/School/Stat121/Project/playlist-generation/'
+PATH_TO_SCRIPT = '/Users/mabasta/Desktop/CS109a/playlist-generation/'
 sys.path.insert(0, PATH_TO_SCRIPT)
 from spotify_api_database import Track, fetchTracks
 
 # Constants
 PATH_TO_SPARSE_MATRIX = PATH_TO_SCRIPT + 'Data/mdp_wrmf_sparse_matrix.pickle'
-PATH_TO_MDP_DATA_FOLDER = '/Users/mwornow/desktop/Stat121Data/'
+PATH_TO_MDP_DATA_FOLDER = '/Users/mabasta/Desktop/CS109a/playlist-generation/data/Songs/'
 PATH_TO_WRMF_GRID_SEARCH_RESULTS = PATH_TO_SCRIPT + 'Data/mdp_wrmf_grid_search_results.pickle'
 
 # User-item ==> Playlist-track
@@ -37,14 +37,14 @@ def read_all_csvs():
 	#######
 	dfs = []
 	cols_ignore = ['pos', 'artist_name', 'artist_uri', 'track_name', 'album_uri', 'duration_ms', 'album_name']
-	for i in range(1000):
+	for i in range(800):
 		filename = PATH_TO_MDP_DATA_FOLDER + 'songs' + str(i) + '.csv'
 		df = pd.read_csv(filename).drop(columns = cols_ignore)
 		df['pid'] = df['pid'] + i * 1000
 		dfs.append(df)
 		print("Done reading "+filename)
-		if i > 1:
-			break
+		# if i > 1:
+		# 	break
 	df = pd.concat(dfs).drop_duplicates() # Binarize dataset (some tracks appear >1 times per playlist)
 	#####
 	# (2) Convert Track URIs -> Track IDs, drop Track URI

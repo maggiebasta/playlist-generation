@@ -45,15 +45,15 @@ def get_song_name(tid):
     return name
 
 
-def get_fitted_wrmf(matrix_path, params):
+def get_wrmf_factors(matrix_path, params):
     """
     Given the user-item sparse matrix and a dictionary of hyperparameters
     returns the WRMF top k predictions
     :param matrix: the user item matrix in scipy sparse form
     :param: hyperparameters to fit
-    :params k: number of top songs to return for each song
+    :returns: tuple of playlist (item), and song (user) factors
     """
-    if os.path.isfile('wrmf_playlist_factors.pickle'):
+    if os.path.isfile('wrmf_factors.pickle'):
         raise FileExistsError("factors already saved locally")
 
     matrix, tid_to_idx, idx_to_tid, _, _ = get_user_item_sparse_matrix(
@@ -67,10 +67,8 @@ def get_fitted_wrmf(matrix_path, params):
     config = (matrix * params['alpha']).astype('double')
     model.fit(config)
 
-    with open('wrmf_playlist_factors.pickle', 'wb') as fd:
-        pkl.dump(model.item_factors, fd)
-    with open('wrmf_song_factors.pickle', 'wb') as fd:
-        pkl.dump(model.user_factors, fd)
+    with open('wrmf_factors.pickle', 'wb') as fd:
+        pkl.dump((model.item_factors, model.user_factors), fd)
 
     return model.item_factors, model.user_factors
 
@@ -79,7 +77,8 @@ def get_top_similar_from_tracks(
     song_factors,
     track_ids,
     n_similar,
-    verbose=True):
+    verbose=True
+):
     """
     Given seed tracks and a number of tracks to return, returns the
     n most similar tracks computed from wrmf
@@ -223,4 +222,4 @@ if __name__ == "__main__":
         'iters': 20,
         'alpha': 15
     }
-    get_fitted_wrmf(PATH_TO_SPARSE_MATRIX, params)
+    get_wrmf_factors(PATH_TO_SPARSE_MATRIX, params)
