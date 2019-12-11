@@ -1,10 +1,10 @@
 import itertools
+import pickle
 import sys
+from time import time
 
 import pandas as pd
 import numpy as np
-
-from spotify_api_database import SpotifyAuth
 
 sys.path.append('Models')
 import wrmf_helpers
@@ -13,50 +13,44 @@ from settings import PATH_TO_SPARSE_MATRIX
 _, tid_to_idx, _, _, _ = wrmf_helpers.get_user_item_sparse_matrix(PATH_TO_SPARSE_MATRIX)
 
 
+from spotify_api_database import Track
+INPUT_FILE = '/Users/mabasta/Desktop/CS109a/playlist-generation/data/spotify_dictionary.pickle'
+with open(INPUT_FILE, 'rb') as fd:
+	SpotifyData = pickle.load(fd)
+
+
+TrackIDs = SpotifyData.keys()
+N_TRACKS = len(TrackIDs)
+
+
 def get_song_features(tid):
     """
     Given an spotify track id, returns the audio features from the api
     :param tid: spotify track id
     :returns: song features
     """
-    spotify = SpotifyAuth()
-    params = {'ids': [tid]}
 
     # dictionary of features to return
+    spotify_track_data = SpotifyData[tid]
+
     features = {}
-
-    # get name, artist, popularity, and album features
-    spotify_features = spotify._get(
-        "https://api.spotify.com/v1/tracks", params
-    )['tracks'][0]
-
-    features['name'] = spotify_features.get('name', "")
-    features['artists'] = [
-        artist['name'] for artist in spotify_features.get('artists', [])
-    ]
-    features['popularity'] = spotify_features.get('popularity', "")
-    try:
-        features['album'] = spotify_features['album']['name']
-    except KeyError:
-        features['album'] = ""
-
-    # try to extract audio features
-    spotify_audio_features = spotify._get(
-        "https://api.spotify.com/v1/audio-features", params
-    )['audio_features']
-
-    audiofeats = [
-        'danceability', 'energy', 'key', 'loudness',
-        'mode', 'speechiness', 'acousticness',
-        'instrumentalness', 'liveness', 'valence',
-        'tempo', 'duration_ms', 'time_signature'
-    ]
-    if spotify_audio_features:
-        for afeat in audiofeats:
-            features[afeat] = spotify_audio_features[0][afeat]
-    else:
-        for afeat in audiofeats:
-            features[afeat] = None
+    features['name'] = spotify_track_data.name
+    features['artists'] = spotify_track_data.artists
+    features['popularity'] = spotify_track_data.popularity
+    features['album'] = spotify_track_data.album_name
+    features['danceability'] = spotify_track_data.danceability
+    features['energy'] = spotify_track_data.energy
+    features['key'] = spotify_track_data.key
+    features['loudness'] = spotify_track_data.loudness
+    features['mode'] = spotify_track_data.mode
+    features['speechiness'] = spotify_track_data.speechiness
+    features['acousticness'] = spotify_track_data.acousticness
+    features['instrumentalness'] = spotify_track_data.instrumentalness
+    features['liveness'] = spotify_track_data.liveness
+    features['valence'] = spotify_track_data.valence
+    features['tempo'] = spotify_track_data.tempo
+    features['duration_ms'] = spotify_track_data.duration_ms
+    features['time_signature'] = spotify_track_data.time_signature
 
     return features
 
@@ -160,8 +154,8 @@ def compute_df(playlist, song_factors, playlist_factors):
             song_factors,
             playlist_factors,
             seed_ids,
-            n_similar_songs=20000,
-            n_similar_playlists=200
+            n_similar_songs=10000,
+            n_similar_playlists=100
     )
     wrmf_ensemble_output_set = set(wrmf_ensemble_output)
     true_matches = playlist_set.intersection(wrmf_ensemble_output_set)
@@ -169,7 +163,7 @@ def compute_df(playlist, song_factors, playlist_factors):
 
     X_train_ids = []
     Y_train = []
-    for _ in range(min(len(true_matches), 20)):
+    for _ in range(min(len(true_matches), 10)):
         X_train_ids.append(true_matches.pop())
         Y_train.append(1)
         X_train_ids.append(false_matches.pop())
