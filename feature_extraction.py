@@ -132,7 +132,7 @@ def compute_df_features(seed_tids, candidate_tids, relevences):
     return df
 
 
-def compute_df(playlist, song_factors, playlist_factors):
+def compute_df(playlist, song_factors, playlist_factors=None, method='ensemble'):
     """
     Given an input playlist and factors computed from stage 1,
     returns a df for stage 2
@@ -150,16 +150,35 @@ def compute_df(playlist, song_factors, playlist_factors):
             seed_ids.append(rand)
     playlist_set.remove(seed_ids[0])
     playlist_set.remove(seed_ids[1])
-    wrmf_ensemble_output = wrmf_helpers.get_top_similar_from_ensemble(
-            song_factors,
-            playlist_factors,
-            seed_ids,
-            n_similar_songs=10000,
-            n_similar_playlists=100
-    )
-    wrmf_ensemble_output_set = set(wrmf_ensemble_output)
-    true_matches = playlist_set.intersection(wrmf_ensemble_output_set)
-    false_matches = wrmf_ensemble_output_set.symmetric_difference(true_matches)
+    if method == 'song':
+        wrmf_output = wrmf_helpers.get_top_similar_from_tracks(
+                song_factors,
+                seed_ids,
+                n_similar_songs=10000,
+                verbose=False
+        )
+    elif method == 'playlist':
+        wrmf_output = wrmf_helpers.get_top_similar_from_playlists(
+                song_factors,
+                playlist_factors,
+                seed_ids,
+                n_similar_songs=10000,
+                n_similar_playlists=100
+        )
+    elif method == 'ensemble':
+        wrmf_output = wrmf_helpers.get_top_similar_from_ensemble(
+                song_factors,
+                playlist_factors,
+                seed_ids,
+                n_similar_songs=10000,
+                n_similar_playlists=100
+        )
+    else:
+        raise ValueError("invalid method")
+
+    wrmf_output_set = set(wrmf_output)
+    true_matches = playlist_set.intersection(wrmf_output_set)
+    false_matches = wrmf_output_set.symmetric_difference(true_matches)
 
     X_train_ids = []
     Y_train = []
