@@ -76,7 +76,7 @@ def get_wrmf_factors(matrix_path, params):
 def get_top_similar_from_tracks(
     song_factors,
     track_ids,
-    n_similar,
+    n_similar_songs,
     verbose=True
 ):
     """
@@ -100,7 +100,7 @@ def get_top_similar_from_tracks(
     item_norms = np.sqrt((item_vecs * item_vecs).sum(axis=1))
 
     scores = np.sum(item_vecs.dot(item_vecs[tidxs].T), axis=1) / item_norms
-    top_idx = np.argpartition(scores, -n_similar)[-n_similar:]
+    top_idx = np.argpartition(scores, -n_similar_songs)[-n_similar_songs:]
     norm = sum([item_norms[tidx] for tidx in tidxs])
     similar = sorted(
         zip(top_idx, scores[top_idx]/norm),
@@ -139,10 +139,9 @@ def get_top_similar_from_playlists(
     :param song_factors: song_factors from wrmf
     :param playlist_factors: playlist_factors from wrmf
     :param track_ids: the ids of the seed tracks
-    :param n_similar: number of similar tracks to return
+    :param n_similar_songs: number of similar tracks to return
     :param verbose: whether or not to print results
     :returns: list of n_similar tuples of track_ids and scores
-    :verbose: boolean, whether or not to print results
     """
 
     # get conversions between index and spotify track id
@@ -183,10 +182,9 @@ def get_top_similar_from_ensemble(
     :param song_factors: song_factors from wrmf
     :param playlist_factors: playlist_factors from wrmf
     :param track_ids: the ids of the seed tracks
-    :param n_similar: number of similar tracks to return
+    :param n_similar_songs: number of similar tracks to return
     :param verbose: whether or not to print results
     :returns: list of n_similar tuples of track_ids and scores
-    :verbose: boolean, whether or not to print results
     """
 
     # get conversions between index and spotify track id
